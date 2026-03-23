@@ -20,12 +20,14 @@ jobs:
           cmake -S . -B build
           -G "Visual Studio 17 2022"
           -A x64
-          -DCODEX_CPP_BUILD_EXE=ON
           -DCODEX_CPP_BUILD_STATIC_LIB=ON
           -DCODEX_CPP_BUILD_SHARED_LIB=ON
 
       - name: Build
         run: cmake --build build --config Release --parallel
 
-      - name: Smoke test
-        run: .\build\Release\codex-cpp.exe --version
+      - name: Verify artifacts
+        run: |
+          if (!(Test-Path .\build\Release\codex-cpp-static.lib)) { throw "Missing codex-cpp-static.lib" }
+          if (!(Test-Path .\build\Release\codex-cpp.dll)) { throw "Missing codex-cpp.dll" }
+          if (!(Test-Path .\build\Release\codex-cpp.lib)) { throw "Missing codex-cpp.lib" }

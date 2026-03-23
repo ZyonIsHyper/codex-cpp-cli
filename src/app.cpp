@@ -1945,6 +1945,53 @@ run_interactive(const parsed_command &command, std::optional<session_record> ses
 
 } // namespace
 
+std::string prompt_once(std::string_view prompt) {
+    if (prompt.empty()) {
+        fail("prompt must not be empty");
+    }
+
+    global_options global;
+    global.data_dir = default_data_dir();
+    ensure_data_layout(global.data_dir);
+
+    config effective_config = apply_overrides(load_config(global.data_dir), global);
+    auto api_key = load_api_key(global.data_dir);
+    if (!api_key.has_value()) {
+        if (can_use_official_codex_runtime(global.data_dir)) {
+            fail(
+                "codex_cpp_prompt requires a reusable API key or Responses bearer. "
+                "Set OPENAI_API_KEY or run `codex-cpp login --device-auth`."
+            );
+        }
+        fail("no credentials found. Run `codex-cpp login` or set OPENAI_API_KEY.");
+    }
+
+    const response_result result =
+        create_response(effective_config, *api_key, std::string(prompt), "", global.verbose);
+    return result.output_text;
+}
+
+void set_api_key(std::string_view api_key) {
+    if (api_key.empty()) {
+        fail("api_key must not be empty");
+    }
+
+    const auto data_dir = default_data_dir();
+    ensure_data_layout(data_dir);
+    save_api_key(data_dir, std::string(api_key));
+}
+
+bool has_credentials() {
+    const auto data_dir = default_data_dir();
+    return load_api_key(data_dir).has_value();
+}
+
+void logout() {
+    const auto data_dir = default_data_dir();
+    ensure_data_layout(data_dir);
+    delete_api_key(data_dir);
+}
+
 int application::run(int argc, char **argv) const {
     try {
         parsed_command command = parse_command_line(argc, argv);
