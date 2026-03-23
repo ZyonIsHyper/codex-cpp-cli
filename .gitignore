@@ -1,0 +1,49 @@
+# Build output
+/build/
+/out/
+/dist/
+
+# CMake
+/CMakeFiles/
+/CMakeCache.txt
+/cmake_install.cmake
+/compile_commands.json
+/Testing/
+/CTestTestfile.cmake
+/install_manifest.txt
+/CPackConfig.cmake
+/CPackSourceConfig.cmake
+
+# Visual Studio
+/.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.VC.db
+*.VC.opendb
+*.opendb
+*.ipch
+*.ilk
+*.pdb
+*.idb
+
+# Binaries and libraries
+*.exe
+*.dll
+*.lib
+*.exp
+*.obj
+*.o
+*.a
+*.so
+*.dylib
+
+# Local runtime data
+/.codex/
+/tmp-auth-check/
+/codex-cpp-data/
+*.log
+
+# User-specific presets
+/CMakeUserPresets.json
