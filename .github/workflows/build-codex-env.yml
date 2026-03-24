@@ -1,0 +1,72 @@
+name: build-codex-env
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-codex-environment:
+    runs-on: windows-2022
+    env:
+      CODEX_CPP_CMAKE_GENERATOR: Visual Studio 17 2022
+      CODEX_CPP_CMAKE_ARCH: x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load .codex environment
+        shell: pwsh
+        run: |
+          $environment_file = ".codex/environments/environment.toml"
+          if (!(Test-Path $environment_file)) {
+            throw "Missing $environment_file"
+          }
+
+          $environment_toml = Get-Content $environment_file -Raw
+
+          $name_match = [regex]::Match($environment_toml, '(?m)^name\s*=\s*"([^"]*)"')
+          if (!$name_match.Success) {
+            throw "Missing name in $environment_file"
+          }
+
+          $setup_match = [regex]::Match($environment_toml, '(?m)^script\s*=\s*"([^"]*)"')
+          if (!$setup_match.Success) {
+            throw "Missing [setup].script in $environment_file"
+          }
+
+          $environment_name = $name_match.Groups[1].Value
+          $setup_script = $setup_match.Groups[1].Value
+
+          "CODEX_ENVIRONMENT_NAME=$environment_name" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "CODEX_ENVIRONMENT_SETUP_SCRIPT=$setup_script" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Run .codex setup
+        if: env.CODEX_ENVIRONMENT_SETUP_SCRIPT != ''
+        shell: cmd
+        run: ${{ env.CODEX_ENVIRONMENT_SETUP_SCRIPT }}
+
+      - name: Build
+        shell: cmd
+        run: build.bat Release
+
+      - name: Run tests
+        shell: cmd
+        run: test.bat Release
+
+      - name: Verify artifacts
+        shell: cmd
+        run: verify-artifacts.bat Release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.CODEX_ENVIRONMENT_NAME }}-release-windows
+          path: |
+            build/Release/codex-cpp-static.lib
+            build/Release/codex-cpp.dll
+            build/Release/codex-cpp.lib

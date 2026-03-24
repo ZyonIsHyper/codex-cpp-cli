@@ -202,7 +202,24 @@ run_foreground_process(const std::filesystem::path &application, const std::vect
     return result;
 }
 
+[[nodiscard]] bool env_flag_enabled(const char *name) {
+    const auto value = get_env_var(name);
+    if (!value.has_value()) {
+        return false;
+    }
+
+    std::string normalized = *value;
+    std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
+    return normalized == "1" || normalized == "true" || normalized == "yes" || normalized == "on";
+}
+
 [[nodiscard]] std::filesystem::path default_data_dir() {
+    if (const auto override_dir = get_env_var("CODEX_CPP_DATA_DIR"); override_dir.has_value()) {
+        return std::filesystem::path(*override_dir);
+    }
+
     const auto user_profile = get_env_var("USERPROFILE");
     if (!user_profile.has_value()) {
         fail("USERPROFILE is not set");
@@ -567,17 +584,23 @@ void save_api_key(const std::filesystem::path &data_dir, const std::string &api_
 }
 
 [[nodiscard]] std::optional<std::string> load_api_key(const std::filesystem::path &data_dir) {
-    if (const auto env_key = get_env_var("OPENAI_API_KEY"); env_key.has_value()) {
-        return env_key;
+    const bool disable_external_credentials = env_flag_enabled("CODEX_CPP_DISABLE_EXTERNAL_CREDENTIALS");
+
+    if (!disable_external_credentials) {
+        if (const auto env_key = get_env_var("OPENAI_API_KEY"); env_key.has_value()) {
+            return env_key;
+        }
     }
 
     if (const auto auth = load_stored_auth(data_dir); auth.has_value() && !auth->openai_api_key.empty()) {
         return auth->openai_api_key;
     }
 
-    if (const auto auth = load_stored_auth_file(official_codex_auth_path());
-        auth.has_value() && !auth->openai_api_key.empty()) {
-        return auth->openai_api_key;
+    if (!disable_external_credentials) {
+        if (const auto auth = load_stored_auth_file(official_codex_auth_path());
+            auth.has_value() && !auth->openai_api_key.empty()) {
+            return auth->openai_api_key;
+        }
     }
 
     const auto path = credentials_path(data_dir);

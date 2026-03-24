@@ -40,7 +40,9 @@
 *.dylib
 
 # Local runtime data
-/.codex/
+/.codex/*
+!/.codex/environments/
+!/.codex/environments/environment.toml
 /tmp-auth-check/
 /codex-cpp-data/
 *.log

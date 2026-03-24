@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(codex_cpp VERSION 0.1.0 LANGUAGES CXX)
+project(codex_cpp VERSION 0.2.0 LANGUAGES CXX)
 
 include(FetchContent)
+include(CTest)
 
 option(CODEX_CPP_BUILD_STATIC_LIB "Build the codex-cpp static library" ON)
 option(CODEX_CPP_BUILD_SHARED_LIB "Build the codex-cpp shared library" ON)
+option(CODEX_CPP_BUILD_TESTS "Build the codex-cpp test suite" ON)
 
 if(NOT CODEX_CPP_BUILD_STATIC_LIB AND NOT CODEX_CPP_BUILD_SHARED_LIB)
     message(FATAL_ERROR "Enable at least one of CODEX_CPP_BUILD_STATIC_LIB or CODEX_CPP_BUILD_SHARED_LIB.")
@@ -97,6 +99,17 @@ function(configure_codex_cpp_target target_name)
     endif()
 endfunction()
 
+function(configure_codex_cpp_test_target target_name)
+    target_compile_features(${target_name} PRIVATE cxx_std_23)
+    target_include_directories(${target_name} PRIVATE include)
+
+    if(MSVC)
+        target_compile_options(${target_name} PRIVATE /W4 /permissive- /EHsc /utf-8 /Zc:__cplusplus)
+    else()
+        target_compile_options(${target_name} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endfunction()
+
 if(CODEX_CPP_BUILD_STATIC_LIB)
     add_library(codex-cpp-static STATIC ${CODEX_CPP_LIBRARY_SOURCES})
     set_target_properties(codex-cpp-static PROPERTIES OUTPUT_NAME codex-cpp-static)
@@ -109,4 +122,19 @@ if(CODEX_CPP_BUILD_SHARED_LIB)
     target_compile_definitions(codex-cpp-shared PRIVATE CODEX_CPP_SHARED CODEX_CPP_BUILDING_SHARED)
     target_compile_definitions(codex-cpp-shared INTERFACE CODEX_CPP_SHARED)
     configure_codex_cpp_target(codex-cpp-shared)
+endif()
+
+if(BUILD_TESTING AND CODEX_CPP_BUILD_TESTS)
+    add_executable(codex-cpp-tests tests/codex_cpp_tests.cpp)
+    configure_codex_cpp_test_target(codex-cpp-tests)
+
+    if(TARGET codex-cpp-static)
+        target_link_libraries(codex-cpp-tests PRIVATE codex-cpp-static)
+    elseif(TARGET codex-cpp-shared)
+        target_link_libraries(codex-cpp-tests PRIVATE codex-cpp-shared)
+    else()
+        message(FATAL_ERROR "codex-cpp tests require either the static or shared library target.")
+    endif()
+
+    add_test(NAME codex-cpp-tests COMMAND codex-cpp-tests)
 endif()

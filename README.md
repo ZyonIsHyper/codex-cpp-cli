@@ -19,7 +19,29 @@ It includes:
 
 ## Build
 
-From a Visual Studio developer shell:
+The repo now uses a batch-based build entrypoint on Windows:
+
+```bat
+build.bat
+```
+
+By default that configures and builds the static library, shared library, and tests in `Release`.
+
+You can also pass the configuration explicitly:
+
+```bat
+build.bat Release
+build.bat Debug
+```
+
+The matching test and artifact verification entrypoints are:
+
+```bat
+test.bat Release
+verify-artifacts.bat Release
+```
+
+Under the hood the batch scripts still drive CMake. If you want the raw commands, they are:
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 18 2026"
@@ -44,9 +66,9 @@ You can choose which artifacts to generate:
 Examples:
 
 ```powershell
-cmake -S . -B build -DCODEX_CPP_BUILD_STATIC_LIB=OFF -DCODEX_CPP_BUILD_SHARED_LIB=ON
-cmake -S . -B build -DCODEX_CPP_BUILD_STATIC_LIB=ON -DCODEX_CPP_BUILD_SHARED_LIB=OFF
-cmake -S . -B build -DCODEX_CPP_BUILD_STATIC_LIB=ON -DCODEX_CPP_BUILD_SHARED_LIB=ON
+set CODEX_CPP_BUILD_STATIC_LIB=OFF && build.bat Release
+set CODEX_CPP_BUILD_SHARED_LIB=OFF && build.bat Release
+set CODEX_CPP_BUILD_STATIC_LIB=ON && set CODEX_CPP_BUILD_SHARED_LIB=ON && build.bat Release
 ```
 
 The public library API is declared in `include\codex_cpp\codex_cpp.h`.
@@ -69,6 +91,38 @@ const char *codex_cpp_version(void);
 
 For C++ callers, `include\codex_cpp\codex_cpp.h` also exposes a `codex_instance` wrapper class with separate methods like `prompt()`, `set_api_key()`, `has_credentials()`, `logout()`, and `version()`.
 
+## codex_instance
+
+`codex_instance` is the easiest way to use the library from C++. It wraps the exported C API and converts failures into `std::runtime_error`.
+
+Available methods:
+
+- `prompt(std::string_view)` sends one prompt and returns the response text
+- `set_api_key(std::string_view)` stores an API key in the local codex-cpp data directory
+- `has_credentials()` checks whether prompt-capable credentials are available
+- `logout()` removes locally stored credentials
+- `last_error()` returns the most recent C API error text for the current thread
+- `version()` returns the library version string
+
+C++ example:
+
+```cpp
+#include <iostream>
+#include "codex_cpp/codex_cpp.h"
+
+int main() {
+    codex_instance codex;
+    codex.set_api_key("sk-...");
+
+    if (!codex.has_credentials()) {
+        return 1;
+    }
+
+    std::cout << codex.prompt("Summarize this project.") << '\n';
+    return 0;
+}
+```
+
 Low-level C API example:
 
 ```c
@@ -89,7 +143,10 @@ GitHub Actions builds the project on `windows-2022` and verifies:
 
 - the static library target
 - the shared library target
+- the CTest suite
 - the import library and DLL artifacts
+
+The repo also includes a dedicated `.codex` environment workflow at `.github/workflows/build-codex-env.yml`. It loads `.codex/environments/environment.toml`, runs the optional `[setup].script`, then calls the batch build, test, and verification scripts before uploading the Release artifacts.
 
 ## Data layout
 
@@ -101,3 +158,5 @@ GitHub Actions builds the project on `windows-2022` and verifies:
 - sessions: `%USERPROFILE%\.codex-cpp\sessions\*.json`
 
 The library currently exposes prompt and credential operations directly. Credentials can come from `OPENAI_API_KEY`, a stored bearer, or the encrypted key written by `codex_cpp_set_api_key`.
+
+For isolated environments, tests, or embedding scenarios, you can override the default state path with `CODEX_CPP_DATA_DIR`. Setting `CODEX_CPP_DISABLE_EXTERNAL_CREDENTIALS=1` disables fallback reads from `OPENAI_API_KEY` and the official Codex auth file.
