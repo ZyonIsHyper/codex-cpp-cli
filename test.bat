@@ -7,9 +7,9 @@ pushd "%ROOT_DIR%" >nul
 set "CONFIGURATION=%~1"
 if "%CONFIGURATION%"=="" set "CONFIGURATION=Release"
 
-set "CTEST_EXE=ctest"
-where /q "%CTEST_EXE%" >nul 2>nul
-if errorlevel 1 set "CTEST_EXE=C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe"
+set "CTEST_EXE="
+for /f "delims=" %%I in ('where ctest.exe 2^>nul') do if not defined CTEST_EXE set "CTEST_EXE=%%I"
+if not defined CTEST_EXE set "CTEST_EXE=C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe"
 
 if not exist "%CTEST_EXE%" (
     echo Failed to locate ctest.exe

@@ -25,9 +25,9 @@ if "%BUILD_SHARED%"=="" set "BUILD_SHARED=ON"
 set "BUILD_TESTS=%CODEX_CPP_BUILD_TESTS%"
 if "%BUILD_TESTS%"=="" set "BUILD_TESTS=ON"
 
-set "CMAKE_EXE=cmake"
-where /q "%CMAKE_EXE%" >nul 2>nul
-if errorlevel 1 set "CMAKE_EXE=C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
+set "CMAKE_EXE="
+for /f "delims=" %%I in ('where cmake.exe 2^>nul') do if not defined CMAKE_EXE set "CMAKE_EXE=%%I"
+if not defined CMAKE_EXE set "CMAKE_EXE=C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
 
 if not exist "%CMAKE_EXE%" (
     echo Failed to locate cmake.exe
